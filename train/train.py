@@ -430,9 +430,9 @@ class Train(BasicTrain):
     @timeit
     def load_test_data(self):
         print("Loading Testing data..")
-        self.test_data = {'X': np.load(self.args.data_dir + "X_test.npy")}
-        self.names_mapper = {'X': np.load(self.args.data_dir + "xnames_test.npy"),
-                             'Y': np.load(self.args.data_dir + "ynames_test.npy")}
+        self.test_data = {'X': np.load(self.args.data_dir + "X_val.npy")}
+        self.names_mapper = {'X': np.load(self.args.data_dir + "names_val.npy"),
+                             'Y': np.load(self.args.data_dir + "ynames_val.npy")}
         self.test_data_len = self.test_data['X'].shape[0] - \
             self.test_data['X'].shape[0] % self.args.batch_size
         print("Test-shape-x -- " + str(self.test_data['X'].shape))
