@@ -1,3 +1,11 @@
+from data.postprocess import postprocess
+import torchfile
+import pdb
+import os
+from tensorflow.data import Iterator
+from utils.seg_dataloader import SegDataLoader
+from utils.img_utils import decode_labels
+import matplotlib.pyplot as plt
 """
 Trainer class to train Segmentation models
 """
@@ -20,16 +28,7 @@ from utils.augmentation import flip_randomly_left_right_image_with_annotation, \
 import scipy.misc as misc
 
 matplotlib.use('Agg')
-import matplotlib.pyplot as plt
 # import cv2
-
-from utils.img_utils import decode_labels
-from utils.seg_dataloader import SegDataLoader
-from tensorflow.contrib.data import Iterator
-import os
-import pdb
-import torchfile
-from data.postprocess import postprocess
 
 
 class Train(BasicTrain):
@@ -56,7 +55,8 @@ class Train(BasicTrain):
                                     'train-loss-per-epoch', 'val-loss-per-epoch',
                                     'train-acc-per-epoch', 'val-acc-per-epoch']
         self.images_summary_tags = [
-            ('train_prediction_sample', [None, self.params.img_height, self.params.img_width * 2, 3]),
+            ('train_prediction_sample', [
+             None, self.params.img_height, self.params.img_width * 2, 3]),
             ('val_prediction_sample', [None, self.params.img_height, self.params.img_width * 2, 3])]
         self.summary_tags = []
         self.summary_placeholders = {}
@@ -64,14 +64,16 @@ class Train(BasicTrain):
         # init summaries and it's operators
         self.init_summaries()
         # Create summary writer
-        self.summary_writer = tf.summary.FileWriter(self.args.summary_dir, self.sess.graph)
+        self.summary_writer = tf.summary.FileWriter(
+            self.args.summary_dir, self.sess.graph)
         ##################################################################################
         # Init load data and generator
         self.generator = None
         if self.args.data_mode == "experiment_tfdata":
             self.data_session = None
             self.train_next_batch, self.train_data_len = self.init_tfdata(self.args.batch_size, self.args.abs_data_dir,
-                                                                          (self.args.img_height, self.args.img_width),
+                                                                          (self.args.img_height,
+                                                                           self.args.img_width),
                                                                           mode='train')
             self.num_iterations_training_per_epoch = self.train_data_len // self.args.batch_size
             self.generator = self.train_tfdata_generator
@@ -153,9 +155,11 @@ class Train(BasicTrain):
         self.metrics = Metrics(self.args.num_classes)
         # Init reporter class
         if self.args.mode == 'train' or 'overfit':
-            self.reporter = Reporter(self.args.out_dir + 'report_train.json', self.args)
+            self.reporter = Reporter(
+                self.args.out_dir + 'report_train.json', self.args)
         elif self.args.mode == 'test':
-            self.reporter = Reporter(self.args.out_dir + 'report_test.json', self.args)
+            self.reporter = Reporter(
+                self.args.out_dir + 'report_test.json', self.args)
             ##################################################################################
 
     def crop(self):
@@ -163,10 +167,14 @@ class Train(BasicTrain):
         temp_val_data = {'X': np.zeros((sh[0] * 2, sh[1], sh[2] // 2, sh[3]), self.val_data['X'].dtype),
                          'Y': np.zeros((sh[0] * 2, sh[1], sh[2] // 2), self.val_data['Y'].dtype)}
         for i in range(sh[0]):
-            temp_val_data['X'][i * 2, :, :, :] = self.val_data['X'][i, :, :sh[2] // 2, :]
-            temp_val_data['X'][i * 2 + 1, :, :, :] = self.val_data['X'][i, :, sh[2] // 2:, :]
-            temp_val_data['Y'][i * 2, :, :] = self.val_data['Y'][i, :, :sh[2] // 2]
-            temp_val_data['Y'][i * 2 + 1, :, :] = self.val_data['Y'][i, :, sh[2] // 2:]
+            temp_val_data['X'][i * 2, :, :,
+                               :] = self.val_data['X'][i, :, :sh[2] // 2, :]
+            temp_val_data['X'][i * 2 + 1, :, :,
+                               :] = self.val_data['X'][i, :, sh[2] // 2:, :]
+            temp_val_data['Y'][i * 2, :,
+                               :] = self.val_data['Y'][i, :, :sh[2] // 2]
+            temp_val_data['Y'][i * 2 + 1, :,
+                               :] = self.val_data['Y'][i, :, sh[2] // 2:]
 
         self.val_data = temp_val_data
 
@@ -177,7 +185,8 @@ class Train(BasicTrain):
             segdl = SegDataLoader(main_dir, batch_size, (resize_shape[0], resize_shape[1]), resize_shape,
                                   # * 2), resize_shape,
                                   'data/cityscapes_tfdata/train.txt')
-            iterator = Iterator.from_structure(segdl.data_tr.output_types, segdl.data_tr.output_shapes)
+            iterator = Iterator.from_structure(
+                segdl.data_tr.output_types, segdl.data_tr.output_shapes)
             next_batch = iterator.get_next()
 
             self.init_op = iterator.make_initializer(segdl.data_tr)
@@ -194,14 +203,17 @@ class Train(BasicTrain):
         # cv2.imshow('seg2', self.val_data['Y'][1,:,:])
         # cv2.waitKey()
 
-        self.val_data_len = self.val_data['X'].shape[0] - self.val_data['X'].shape[0] % self.args.batch_size
+        self.val_data_len = self.val_data['X'].shape[0] - \
+            self.val_data['X'].shape[0] % self.args.batch_size
         #        self.num_iterations_validation_per_epoch = (
         #                                                       self.val_data_len + self.args.batch_size - 1) // self.args.batch_size
         self.num_iterations_validation_per_epoch = self.val_data_len // self.args.batch_size
 
-        print("Val-shape-x -- " + str(self.val_data['X'].shape) + " " + str(self.val_data_len))
+        print("Val-shape-x -- " +
+              str(self.val_data['X'].shape) + " " + str(self.val_data_len))
         print("Val-shape-y -- " + str(self.val_data['Y'].shape))
-        print("Num of iterations on validation data in one epoch -- " + str(self.num_iterations_validation_per_epoch))
+        print("Num of iterations on validation data in one epoch -- " +
+              str(self.num_iterations_validation_per_epoch))
         print("Validation data is loaded")
 
         return next_batch, segdl.data_len
@@ -211,22 +223,27 @@ class Train(BasicTrain):
         print("Loading data..")
         self.train_data = {'X': np.load(self.args.data_dir + "X_train.npy"),
                            'Y': np.load(self.args.data_dir + "Y_train.npy")}
-        self.train_data_len = self.train_data['X'].shape[0] - self.train_data['X'].shape[0] % self.args.batch_size
+        self.train_data_len = self.train_data['X'].shape[0] - \
+            self.train_data['X'].shape[0] % self.args.batch_size
         self.num_iterations_training_per_epoch = (
-                                                         self.train_data_len + self.args.batch_size - 1) // self.args.batch_size
+            self.train_data_len + self.args.batch_size - 1) // self.args.batch_size
         print("Train-shape-x -- " + str(self.train_data['X'].shape))
         print("Train-shape-y -- " + str(self.train_data['Y'].shape))
-        print("Num of iterations in one epoch -- " + str(self.num_iterations_training_per_epoch))
+        print("Num of iterations in one epoch -- " +
+              str(self.num_iterations_training_per_epoch))
         print("Overfitting data is loaded")
 
         print("Loading Validation data..")
         self.val_data = self.train_data
-        self.val_data_len = self.val_data['X'].shape[0] - self.val_data['X'].shape[0] % self.args.batch_size
+        self.val_data_len = self.val_data['X'].shape[0] - \
+            self.val_data['X'].shape[0] % self.args.batch_size
         self.num_iterations_validation_per_epoch = (
-                                                           self.val_data_len + self.args.batch_size - 1) // self.args.batch_size
-        print("Val-shape-x -- " + str(self.val_data['X'].shape) + " " + str(self.val_data_len))
+            self.val_data_len + self.args.batch_size - 1) // self.args.batch_size
+        print("Val-shape-x -- " +
+              str(self.val_data['X'].shape) + " " + str(self.val_data_len))
         print("Val-shape-y -- " + str(self.val_data['Y'].shape))
-        print("Num of iterations on validation data in one epoch -- " + str(self.num_iterations_validation_per_epoch))
+        print("Num of iterations on validation data in one epoch -- " +
+              str(self.num_iterations_validation_per_epoch))
         print("Validation data is loaded")
 
     def overfit_generator(self):
@@ -237,7 +254,8 @@ class Train(BasicTrain):
             # init index array if it is a new_epoch
             if new_epoch_flag:
                 if self.args.shuffle:
-                    idx = np.random.choice(self.train_data_len, self.train_data_len, replace=False)
+                    idx = np.random.choice(
+                        self.train_data_len, self.train_data_len, replace=False)
                 else:
                     idx = np.arange(self.train_data_len)
                 new_epoch_flag = False
@@ -262,12 +280,16 @@ class Train(BasicTrain):
         with tf.variable_scope('train-summary-per-epoch'):
             for tag in self.scalar_summary_tags:
                 self.summary_tags += tag
-                self.summary_placeholders[tag] = tf.placeholder('float32', None, name=tag)
-                self.summary_ops[tag] = tf.summary.scalar(tag, self.summary_placeholders[tag])
+                self.summary_placeholders[tag] = tf.placeholder(
+                    'float32', None, name=tag)
+                self.summary_ops[tag] = tf.summary.scalar(
+                    tag, self.summary_placeholders[tag])
             for tag, shape in self.images_summary_tags:
                 self.summary_tags += tag
-                self.summary_placeholders[tag] = tf.placeholder('float32', shape, name=tag)
-                self.summary_ops[tag] = tf.summary.image(tag, self.summary_placeholders[tag], max_outputs=10)
+                self.summary_placeholders[tag] = tf.placeholder(
+                    'float32', shape, name=tag)
+                self.summary_ops[tag] = tf.summary.image(
+                    tag, self.summary_placeholders[tag], max_outputs=10)
 
     def add_summary(self, step, summaries_dict=None, summaries_merged=None):
         """
@@ -296,18 +318,22 @@ class Train(BasicTrain):
         if v2:
             out_shape = (self.train_data['Y'].shape[1] // self.targets_resize,
                          self.train_data['Y'].shape[2] // self.targets_resize)
-            yy = np.zeros((self.train_data['Y'].shape[0], out_shape[0], out_shape[1]), dtype=self.train_data['Y'].dtype)
+            yy = np.zeros((self.train_data['Y'].shape[0], out_shape[0],
+                           out_shape[1]), dtype=self.train_data['Y'].dtype)
             for y in range(self.train_data['Y'].shape[0]):
-                yy[y, ...] = misc.imresize(self.train_data['Y'][y, ...], out_shape, interp='nearest')
+                yy[y, ...] = misc.imresize(
+                    self.train_data['Y'][y, ...], out_shape, interp='nearest')
             self.train_data['Y'] = yy
         self.train_data_len = self.train_data['X'].shape[0]
 
         self.num_iterations_training_per_epoch = (
-                                                         self.train_data_len + self.args.batch_size - 1) // self.args.batch_size
+            self.train_data_len + self.args.batch_size - 1) // self.args.batch_size
 
-        print("Train-shape-x -- " + str(self.train_data['X'].shape) + " " + str(self.train_data_len))
+        print("Train-shape-x -- " +
+              str(self.train_data['X'].shape) + " " + str(self.train_data_len))
         print("Train-shape-y -- " + str(self.train_data['Y'].shape))
-        print("Num of iterations on training data in one epoch -- " + str(self.num_iterations_training_per_epoch))
+        print("Num of iterations on training data in one epoch -- " +
+              str(self.num_iterations_training_per_epoch))
         print("Training data is loaded")
 
         print("Loading Validation data..")
@@ -317,40 +343,51 @@ class Train(BasicTrain):
         if v2:
             out_shape = (self.val_data['Y'].shape[1] // self.targets_resize,
                          self.val_data['Y'].shape[2] // self.targets_resize)
-            yy = np.zeros((self.val_data['Y'].shape[0], out_shape[0], out_shape[1]), dtype=self.train_data['Y'].dtype)
+            yy = np.zeros((self.val_data['Y'].shape[0], out_shape[0],
+                           out_shape[1]), dtype=self.train_data['Y'].dtype)
             for y in range(self.val_data['Y'].shape[0]):
-                yy[y, ...] = misc.imresize(self.val_data['Y'][y, ...], out_shape, interp='nearest')
+                yy[y, ...] = misc.imresize(
+                    self.val_data['Y'][y, ...], out_shape, interp='nearest')
             self.val_data['Y'] = yy
 
-        self.val_data_len = self.val_data['X'].shape[0] - self.val_data['X'].shape[0] % self.args.batch_size
+        self.val_data_len = self.val_data['X'].shape[0] - \
+            self.val_data['X'].shape[0] % self.args.batch_size
         self.num_iterations_validation_per_epoch = (
-                                                           self.val_data_len + self.args.batch_size - 1) // self.args.batch_size
-        print("Val-shape-x -- " + str(self.val_data['X'].shape) + " " + str(self.val_data_len))
+            self.val_data_len + self.args.batch_size - 1) // self.args.batch_size
+        print("Val-shape-x -- " +
+              str(self.val_data['X'].shape) + " " + str(self.val_data_len))
         print("Val-shape-y -- " + str(self.val_data['Y'].shape))
-        print("Num of iterations on validation data in one epoch -- " + str(self.num_iterations_validation_per_epoch))
+        print("Num of iterations on validation data in one epoch -- " +
+              str(self.num_iterations_validation_per_epoch))
         print("Validation data is loaded")
 
     @timeit
     def load_train_data_h5(self):
         print("Loading Training data..")
-        self.train_data = h5py.File(self.args.data_dir + self.args.h5_train_file, 'r')
+        self.train_data = h5py.File(
+            self.args.data_dir + self.args.h5_train_file, 'r')
         self.train_data_len = self.args.h5_train_len
         self.num_iterations_training_per_epoch = (
-                                                         self.train_data_len + self.args.batch_size - 1) // self.args.batch_size
-        print("Train-shape-x -- " + str(self.train_data['X'].shape) + " " + str(self.train_data_len))
+            self.train_data_len + self.args.batch_size - 1) // self.args.batch_size
+        print("Train-shape-x -- " +
+              str(self.train_data['X'].shape) + " " + str(self.train_data_len))
         print("Train-shape-y -- " + str(self.train_data['Y'].shape))
-        print("Num of iterations on training data in one epoch -- " + str(self.num_iterations_training_per_epoch))
+        print("Num of iterations on training data in one epoch -- " +
+              str(self.num_iterations_training_per_epoch))
         print("Training data is loaded")
 
         print("Loading Validation data..")
         self.val_data = {'X': np.load(self.args.data_dir + "X_val.npy"),
                          'Y': np.load(self.args.data_dir + "Y_val.npy")}
-        self.val_data_len = self.val_data['X'].shape[0] - self.val_data['X'].shape[0] % self.args.batch_size
+        self.val_data_len = self.val_data['X'].shape[0] - \
+            self.val_data['X'].shape[0] % self.args.batch_size
         self.num_iterations_validation_per_epoch = (
-                                                           self.val_data_len + self.args.batch_size - 1) // self.args.batch_size
-        print("Val-shape-x -- " + str(self.val_data['X'].shape) + " " + str(self.val_data_len))
+            self.val_data_len + self.args.batch_size - 1) // self.args.batch_size
+        print("Val-shape-x -- " +
+              str(self.val_data['X'].shape) + " " + str(self.val_data_len))
         print("Val-shape-y -- " + str(self.val_data['Y'].shape))
-        print("Num of iterations on validation data in one epoch -- " + str(self.num_iterations_validation_per_epoch))
+        print("Num of iterations on validation data in one epoch -- " +
+              str(self.num_iterations_validation_per_epoch))
         print("Validation data is loaded")
 
     @timeit
@@ -361,7 +398,8 @@ class Train(BasicTrain):
         self.test_data_len = self.test_data['X'].shape[0]
         print("Vid-shape-x -- " + str(self.test_data['X'].shape))
         print("Vid-shape-y -- " + str(self.test_data['Y'].shape))
-        self.num_iterations_testing_per_epoch = (self.test_data_len + self.args.batch_size - 1) // self.args.batch_size
+        self.num_iterations_testing_per_epoch = (
+            self.test_data_len + self.args.batch_size - 1) // self.args.batch_size
         print("Video data is loaded")
 
     @timeit
@@ -374,15 +412,19 @@ class Train(BasicTrain):
         if v2:
             out_shape = (self.test_data['Y'].shape[1] // self.targets_resize,
                          self.test_data['Y'].shape[2] // self.targets_resize)
-            yy = np.zeros((self.test_data['Y'].shape[0], out_shape[0], out_shape[1]), dtype=self.test_data['Y'].dtype)
+            yy = np.zeros((self.test_data['Y'].shape[0], out_shape[0],
+                           out_shape[1]), dtype=self.test_data['Y'].dtype)
             for y in range(self.test_data['Y'].shape[0]):
-                yy[y, ...] = misc.imresize(self.test_data['Y'][y, ...], out_shape, interp='nearest')
+                yy[y, ...] = misc.imresize(
+                    self.test_data['Y'][y, ...], out_shape, interp='nearest')
             self.test_data['Y'] = yy
 
-        self.test_data_len = self.test_data['X'].shape[0] - self.test_data['X'].shape[0] % self.args.batch_size
+        self.test_data_len = self.test_data['X'].shape[0] - \
+            self.test_data['X'].shape[0] % self.args.batch_size
         print("Validation-shape-x -- " + str(self.test_data['X'].shape))
         print("Validation-shape-y -- " + str(self.test_data['Y'].shape))
-        self.num_iterations_testing_per_epoch = (self.test_data_len + self.args.batch_size - 1) // self.args.batch_size
+        self.num_iterations_testing_per_epoch = (
+            self.test_data_len + self.args.batch_size - 1) // self.args.batch_size
         print("Validation data is loaded")
 
     @timeit
@@ -391,9 +433,11 @@ class Train(BasicTrain):
         self.test_data = {'X': np.load(self.args.data_dir + "X_test.npy")}
         self.names_mapper = {'X': np.load(self.args.data_dir + "xnames_test.npy"),
                              'Y': np.load(self.args.data_dir + "ynames_test.npy")}
-        self.test_data_len = self.test_data['X'].shape[0] - self.test_data['X'].shape[0] % self.args.batch_size
+        self.test_data_len = self.test_data['X'].shape[0] - \
+            self.test_data['X'].shape[0] % self.args.batch_size
         print("Test-shape-x -- " + str(self.test_data['X'].shape))
-        self.num_iterations_testing_per_epoch = (self.test_data_len + self.args.batch_size - 1) // self.args.batch_size
+        self.num_iterations_testing_per_epoch = (
+            self.test_data_len + self.args.batch_size - 1) // self.args.batch_size
         print("Test data is loaded")
 
     def test_generator(self):
@@ -404,7 +448,8 @@ class Train(BasicTrain):
             # init index array if it is a new_epoch
             if new_epoch_flag:
                 if self.args.shuffle:
-                    idx = np.random.choice(self.test_data_len, self.test_data_len, replace=False)
+                    idx = np.random.choice(
+                        self.test_data_len, self.test_data_len, replace=False)
                 else:
                     idx = np.arange(self.test_data_len)
                 new_epoch_flag = False
@@ -469,8 +514,10 @@ class Train(BasicTrain):
         X = []
         Y = []
         for i in range(data['X'].shape[0]):
-            X.append(misc.imresize(data['X'][i, ...], (self.args.img_height, self.args.img_width)))
-            Y.append(misc.imresize(data['Y'][i, ...], (self.args.img_height, self.args.img_width), 'nearest'))
+            X.append(misc.imresize(
+                data['X'][i, ...], (self.args.img_height, self.args.img_width)))
+            Y.append(misc.imresize(
+                data['Y'][i, ...], (self.args.img_height, self.args.img_width), 'nearest'))
         data['X'] = np.asarray(X)
         data['Y'] = np.asarray(Y)
         return data
@@ -509,7 +556,8 @@ class Train(BasicTrain):
 
                     # run the feed_forward
                     _, loss, acc, summaries_merged = self.sess.run(
-                        [self.model.train_op, self.model.loss, self.model.accuracy, self.model.merged_summaries],
+                        [self.model.train_op, self.model.loss,
+                            self.model.accuracy, self.model.merged_summaries],
                         feed_dict=feed_dict)
                     # log loss and acc
                     loss_list += [loss]
@@ -545,8 +593,10 @@ class Train(BasicTrain):
                     # self.add_summary(cur_it, summaries_dict=summaries_dict, summaries_merged=summaries_merged)
 
                     # report
-                    self.reporter.report_experiment_statistics('train-acc', 'epoch-' + str(cur_epoch), str(total_acc))
-                    self.reporter.report_experiment_statistics('train-loss', 'epoch-' + str(cur_epoch), str(total_loss))
+                    self.reporter.report_experiment_statistics(
+                        'train-acc', 'epoch-' + str(cur_epoch), str(total_acc))
+                    self.reporter.report_experiment_statistics(
+                        'train-loss', 'epoch-' + str(cur_epoch), str(total_loss))
                     self.reporter.finalize()
 
                     # Update the Global step
@@ -561,7 +611,7 @@ class Train(BasicTrain):
                     # print in console
                     tt.close()
                     print("epoch-" + str(cur_epoch) + "-" + "loss:" + str(total_loss) + "-" + " acc:" + str(total_acc)[
-                                                                                                        :6])
+                        :6])
 
                     # Break the loop to finalize this epoch
                     break
@@ -588,7 +638,8 @@ class Train(BasicTrain):
         print("Training Finished")
 
     def test_per_epoch(self, step, epoch):
-        print("Validation at step:" + str(step) + " at epoch:" + str(epoch) + " ..")
+        print("Validation at step:" + str(step) +
+              " at epoch:" + str(epoch) + " ..")
 
         # init tqdm and get the epoch value
         tt = tqdm(range(self.num_iterations_validation_per_epoch), total=self.num_iterations_validation_per_epoch,
@@ -614,7 +665,8 @@ class Train(BasicTrain):
             x_batch = self.val_data['X'][idx:idx + self.args.batch_size]
             y_batch = self.val_data['Y'][idx:idx + self.args.batch_size]
             if self.args.data_mode == 'experiment_v2':
-                y_batch_large = self.val_data['Y_large'][idx:idx + self.args.batch_size]
+                y_batch_large = self.val_data['Y_large'][idx:idx +
+                                                         self.args.batch_size]
 
             # update idx of minibatch
             idx += self.args.batch_size
@@ -632,7 +684,8 @@ class Train(BasicTrain):
                 # run the feed_forward
 
                 out_argmax, loss, acc, summaries_merged = self.sess.run(
-                    [self.model.out_argmax, self.model.loss, self.model.accuracy, self.model.merged_summaries],
+                    [self.model.out_argmax, self.model.loss,
+                        self.model.accuracy, self.model.merged_summaries],
                     feed_dict=feed_dict)
 
                 end = time.time()
@@ -645,7 +698,8 @@ class Train(BasicTrain):
                                   dtype=np.uint32)
                     out_argmax = np.asarray(out_argmax, dtype=np.uint8)
                     for y in range(out_argmax.shape[0]):
-                        yy[y, ...] = misc.imresize(out_argmax[y, ...], y_batch_large.shape[1:], interp='nearest')
+                        yy[y, ...] = misc.imresize(
+                            out_argmax[y, ...], y_batch_large.shape[1:], interp='nearest')
                     y_batch = y_batch_large
                     out_argmax = yy
 
@@ -655,13 +709,15 @@ class Train(BasicTrain):
             else:
                 start = time.time()
                 # run the feed_forward
-                if self.args.data_mode == 'experiment_v2':  # Issues in concatenating gt and img with diff sizes now for segmented_imgs
+                # Issues in concatenating gt and img with diff sizes now for segmented_imgs
+                if self.args.data_mode == 'experiment_v2':
                     out_argmax, acc = self.sess.run(
                         [self.test_model.out_argmax, self.test_model.accuracy],
                         feed_dict=feed_dict)
                 else:
                     out_argmax, acc, segmented_imgs = self.sess.run(
-                        [self.test_model.out_argmax, self.test_model.accuracy, self.test_model.segmented_summary],
+                        [self.test_model.out_argmax, self.test_model.accuracy,
+                            self.test_model.segmented_summary],
                         feed_dict=feed_dict)
 
                 end = time.time()
@@ -672,22 +728,26 @@ class Train(BasicTrain):
                 self.metrics.update_metrics_batch(out_argmax, y_batch)
                 # mean over batches
                 total_acc = np.mean(acc_list)
-                mean_iou = self.metrics.compute_final_metrics(self.num_iterations_validation_per_epoch)
+                mean_iou = self.metrics.compute_final_metrics(
+                    self.num_iterations_validation_per_epoch)
                 mean_iou_arr = self.metrics.iou
                 mean_inference = str(np.mean(inf_list)) + '-seconds'
                 # summarize
                 summaries_dict = dict()
                 summaries_dict['val-acc-per-epoch'] = total_acc
                 summaries_dict['mean_iou_on_val'] = mean_iou
-                if self.args.data_mode != 'experiment_v2':  # Issues in concatenating gt and img with diff sizes now for segmented_imgs
+                # Issues in concatenating gt and img with diff sizes now for segmented_imgs
+                if self.args.data_mode != 'experiment_v2':
                     summaries_dict['val_prediction_sample'] = segmented_imgs
                 #                self.add_summary(step, summaries_dict=summaries_dict, summaries_merged=summaries_merged)
 
                 # report
-                self.reporter.report_experiment_statistics('validation-acc', 'epoch-' + str(epoch), str(total_acc))
+                self.reporter.report_experiment_statistics(
+                    'validation-acc', 'epoch-' + str(epoch), str(total_acc))
                 self.reporter.report_experiment_statistics('avg_inference_time_on_validation', 'epoch-' + str(epoch),
                                                            str(mean_inference))
-                self.reporter.report_experiment_validation_iou('epoch-' + str(epoch), str(mean_iou), mean_iou_arr)
+                self.reporter.report_experiment_validation_iou(
+                    'epoch-' + str(epoch), str(mean_iou), mean_iou_arr)
                 self.reporter.finalize()
 
                 # print in console
@@ -696,7 +756,8 @@ class Train(BasicTrain):
                       "acc:" + str(total_acc)[:6] + "-mean_iou:" + str(mean_iou))
                 print("Last_max_iou: " + str(max_iou))
                 if mean_iou > max_iou:
-                    print("This validation got a new best iou. so we will save this one")
+                    print(
+                        "This validation got a new best iou. so we will save this one")
                     # save the best model
                     self.save_best_model()
                     # Set the new maximum
@@ -769,10 +830,12 @@ class Train(BasicTrain):
                     feed_dict=feed_dict)
 
             if self.args.data_mode == 'test_v2':
-                yy = np.zeros((out_argmax.shape[0], y_batch_large.shape[1], y_batch_large.shape[2]), dtype=np.uint32)
+                yy = np.zeros(
+                    (out_argmax.shape[0], y_batch_large.shape[1], y_batch_large.shape[2]), dtype=np.uint32)
                 out_argmax = np.asarray(out_argmax, dtype=np.uint8)
                 for y in range(out_argmax.shape[0]):
-                    yy[y, ...] = misc.imresize(out_argmax[y, ...], y_batch_large.shape[1:], interp='nearest')
+                    yy[y, ...] = misc.imresize(
+                        out_argmax[y, ...], y_batch_large.shape[1:], interp='nearest')
                 y_batch = y_batch_large
                 out_argmax = yy
 
@@ -783,7 +846,8 @@ class Train(BasicTrain):
             # print('mean preds ', out_argmax.mean())
             # np.save(self.args.out_dir + 'npy/' + str(cur_iteration) + '.npy', out_argmax[0])
             if self.args.data_mode == 'test':
-                plt.imsave(self.args.out_dir + 'imgs/' + 'test_' + str(cur_iteration) + '.png', segmented_imgs[0])
+                plt.imsave(self.args.out_dir + 'imgs/' + 'test_' +
+                           str(cur_iteration) + '.png', segmented_imgs[0])
 
             # log loss and acc
             acc_list += [acc]
@@ -811,7 +875,8 @@ class Train(BasicTrain):
 
         print("Plotting imgs")
         for i in range(len(img_list)):
-            plt.imsave(self.args.imgs_dir + 'test_' + str(i) + '.png', img_list[i])
+            plt.imsave(self.args.imgs_dir + 'test_' +
+                       str(i) + '.png', img_list[i])
 
     def test_eval(self, pkl=False):
         print("Testing mode will begin NOW..")
@@ -852,17 +917,20 @@ class Train(BasicTrain):
                 segmented_imgs = decode_labels(out_argmax, 20)
 
             # Colored results for visualization
-            colored_save_path = self.args.out_dir + 'imgs/' + str(self.names_mapper['Y'][idx])
+            colored_save_path = self.args.out_dir + \
+                'imgs/' + str(self.names_mapper['Y'][idx])
             if not os.path.exists(os.path.dirname(colored_save_path)):
                 os.makedirs(os.path.dirname(colored_save_path))
             plt.imsave(colored_save_path, segmented_imgs[0])
 
             # Results for official evaluation
-            save_path = self.args.out_dir + 'results/' + str(self.names_mapper['Y'][idx])
+            save_path = self.args.out_dir + 'results/' + \
+                str(self.names_mapper['Y'][idx])
             if not os.path.exists(os.path.dirname(save_path)):
                 os.makedirs(os.path.dirname(save_path))
             output = postprocess(out_argmax[0])
-            misc.imsave(save_path, misc.imresize(output, [1024, 2048], 'nearest'))
+            misc.imsave(save_path, misc.imresize(
+                output, [1024, 2048], 'nearest'))
 
             idx += 1
 
@@ -910,12 +978,12 @@ class Train(BasicTrain):
             # Feed this variables to the network
             if self.args.random_cropping:
                 feed_dict = {self.test_model.x_pl_before: x_batch,
-                             self.test_model.y_pl_before: y_batch
+                             self.test_model.y_pl_before: y_batch,
                              self.test_model.is_training: False,
                              }
             else:
                 feed_dict = {self.test_model.x_pl: x_batch,
-                             self.test_model.y_pl: y_batch
+                             self.test_model.y_pl: y_batch,
                              self.test_model.is_training: False
                              }
 
@@ -946,7 +1014,8 @@ class Train(BasicTrain):
         print("Debugging mode will begin NOW..")
 
         layers = tf.get_collection('debug_layers')
-        print("ALL Layers in the collection that i wanna to run {} layer".format(len(layers)))
+        print("ALL Layers in the collection that i wanna to run {} layer".format(
+            len(layers)))
         for layer in layers:
             print(layer)
 
@@ -1015,7 +1084,8 @@ class Train(BasicTrain):
 
         print('mean preds ', out_argmax[0].mean())
 
-        plt.imsave(self.args.out_dir + 'imgs/' + 'debug.png', segmented_imgs[0])
+        plt.imsave(self.args.out_dir + 'imgs/' +
+                   'debug.png', segmented_imgs[0])
 
         self.metrics.update_metrics(out_argmax[0], self.debug_y, 0, 0)
 
