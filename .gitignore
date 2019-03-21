@@ -147,3 +147,5 @@ cityscapesScripts/cityscapesscripts/annotation/icons/
 cityscapesScripts/cityscapesscripts/viewer/icons/
 data/cityscapes_tfdata/images/
 data/cityscapes_tfdata/labels/
+data/full_cityscapes_res/**
+.vscode/**
